@@ -7,7 +7,17 @@ export class JobEntity {
   @ApiProperty({ nullable: true })
   deploymentId: string | null;
 
-  @ApiProperty({ enum: ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED'] })
+  @ApiProperty({
+    enum: [
+      'QUEUED',
+      'RUNNING',
+      'SUCCEEDED',
+      'FAILED',
+      'CANCELLED',
+      'CANCEL_REQUESTED',
+      'TIMED_OUT',
+    ],
+  })
   status: string;
 
   @ApiProperty()
@@ -27,4 +37,22 @@ export class JobEntity {
 
   @ApiProperty({ nullable: true })
   finishedAt: Date | null;
+
+  @ApiProperty({ nullable: true })
+  cancelledAt: Date | null;
+
+  @ApiProperty()
+  timeoutMs: number;
+
+  @ApiProperty()
+  attempt: number;
+
+  @ApiProperty()
+  maxAttempts: number;
+
+  @ApiProperty({ nullable: true })
+  retryDelayMs: number | null;
+
+  @ApiProperty({ nullable: true })
+  idempotencyKey: string | null;
 }

@@ -128,7 +128,19 @@ curl -X POST http://localhost:3001/api/jobs \
     "inputJson": {
       "prompt": "Hello, world!",
       "max_tokens": 100
-    }
+    },
+    "timeoutMs": 60000,
+    "maxAttempts": 3,
+    "retryDelayMs": 1000
+  }'
+
+# Create a job with idempotency key (prevents duplicates)
+curl -X POST http://localhost:3001/api/jobs \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY_HERE" \
+  -H "idempotency-key: unique-request-id-123" \
+  -d '{
+    "inputJson": {"prompt": "Test"}
   }'
 
 # Response:
@@ -136,6 +148,9 @@ curl -X POST http://localhost:3001/api/jobs \
 #   "id": "job-uuid",
 #   "status": "QUEUED",
 #   "createdAt": "...",
+#   "timeoutMs": 60000,
+#   "attempt": 1,
+#   "maxAttempts": 3,
 #   ...
 # }
 
@@ -145,6 +160,10 @@ curl http://localhost:3001/api/jobs/{id} \
 
 # List latest 20 jobs
 curl http://localhost:3001/api/jobs \
+  -H "x-api-key: YOUR_API_KEY_HERE"
+
+# Cancel a job
+curl -X POST http://localhost:3001/api/jobs/{id}/cancel \
   -H "x-api-key: YOUR_API_KEY_HERE"
 
 # Stream job status updates via Server-Sent Events (SSE)
@@ -163,16 +182,41 @@ curl -N http://localhost:3001/api/jobs/{id}/events \
 #
 # event: status
 # data: {"jobId":"...","status":"SUCCEEDED","ts":"...","outputJson":{...}}
+# (Connection closes automatically after terminal status)
 ```
 
-**Job Status Flow**: `QUEUED` → `RUNNING` → `SUCCEEDED` or `FAILED`
+**Job Status Flow**: `QUEUED` → `RUNNING` → `SUCCEEDED` | `FAILED` | `CANCELLED` | `TIMED_OUT`
 
-**SSE Stream**: The `/api/jobs/:id/events` endpoint provides real-time job status updates:
-- Sends initial job state immediately upon connection
-- Streams subsequent status changes as they occur
-- Includes `outputJson` on SUCCEEDED and `error` on FAILED
-- Sends heartbeat every 15 seconds to keep connection alive
-- Automatically cleans up on client disconnect
+**Production Features**:
+
+1. **Job Cancellation**:
+   - `QUEUED` jobs: Cancelled immediately, removed from queue
+   - `RUNNING` jobs: Cancellation requested, worker checks periodically and aborts
+   - Terminal states: Returns 409 conflict
+
+2. **Timeouts**:
+   - Default: 60 seconds (configurable via `timeoutMs`)
+   - Range: 1-600 seconds
+   - Worker enforces timeout and sets `TIMED_OUT` status
+
+3. **Retries with Exponential Backoff**:
+   - Configurable via `maxAttempts` (1-5, default: 1)
+   - Base retry delay via `retryDelayMs` (default: 1000ms)
+   - Exponential backoff: delay × 2^(attempt-1) with 10% jitter
+   - Only retries on transient errors (network, timeouts, 5xx)
+
+4. **Idempotency**:
+   - Use `idempotency-key` header to prevent duplicate jobs
+   - Same key with same payload: returns existing job
+   - Same key with different payload: returns 409 conflict
+
+5. **SSE Stream**: The `/api/jobs/:id/events` endpoint provides real-time job status updates:
+   - Sends initial job state immediately upon connection
+   - Streams subsequent status changes as they occur
+   - Includes `outputJson` on SUCCEEDED and `error` on FAILED/TIMED_OUT
+   - Sends heartbeat every 15 seconds to keep connection alive
+   - **Auto-closes** connection when terminal state is reached
+   - Automatically cleans up on client disconnect
 
 The worker (see `worker/`) processes jobs from the Redis queue and updates their status in the database. The backend listens to BullMQ events via `QueueEvents` to stream real-time updates to SSE clients.
 
@@ -184,7 +228,11 @@ The application uses PostgreSQL with Prisma ORM.
 
 - **ApiKey**: Stores API keys (hashed) with revocation support
 - **Deployment**: Stores model deployments with activation state
-- **Job**: Stores background jobs with status tracking (QUEUED, RUNNING, SUCCEEDED, FAILED)
+- **Job**: Stores background jobs with:
+  - Status tracking: QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, CANCEL_REQUESTED, TIMED_OUT
+  - Timeout enforcement (timeoutMs)
+  - Retry configuration (attempt, maxAttempts, retryDelayMs)
+  - Idempotency keys for duplicate prevention
 
 ### Prisma Commands
 

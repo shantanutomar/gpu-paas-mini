@@ -7,7 +7,14 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export interface JobStatusEvent {
   jobId: string;
-  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  status:
+    | 'QUEUED'
+    | 'RUNNING'
+    | 'SUCCEEDED'
+    | 'FAILED'
+    | 'CANCELLED'
+    | 'CANCEL_REQUESTED'
+    | 'TIMED_OUT';
   ts: string;
   outputJson?: Record<string, any>;
   error?: string;

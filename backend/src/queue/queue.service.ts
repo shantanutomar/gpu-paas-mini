@@ -38,4 +38,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     // Use our database job ID as the BullMQ job ID
     await this.queue.add('process-job', { jobId }, { jobId });
   }
+
+  async removeJob(jobId: string): Promise<void> {
+    const job = await this.queue.getJob(jobId);
+    if (job) {
+      await job.remove();
+    }
+  }
 }
