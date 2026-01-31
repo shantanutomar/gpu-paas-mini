@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  name      String
+  keyHash   String    @unique
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@map("api_keys")
+}
+
+model Deployment {
+  id         String   @id @default(uuid())
+  modelName  String   @map("model_name")
+  configJson Json     @map("config_json")
+  isActive   Boolean  @default(false) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("deployments")
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model Job {
+  id           String    @id @default(uuid())
+  deploymentId String?   @map("deployment_id")
+  status       JobStatus @default(QUEUED)
+  inputJson    Json      @map("input_json")
+  outputJson   Json?     @map("output_json")
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  startedAt    DateTime? @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  @@map("jobs")
+}
