@@ -7,6 +7,7 @@ Video Recording: https://drive.google.com/file/d/1VqzVt8sum6BClS-zpgrBtBFIoriXha
 ## 📚 Documentation
 
 - **[Getting Started](#getting-started)** - Quick setup and running locally
+- **[Architecture & Design](./docs/ARCHITECTURE.md)** - System design, scalability, and future improvements
 
 ## Tech Stack
 
