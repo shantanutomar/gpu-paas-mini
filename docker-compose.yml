@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: gpu-paas-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gpu_paas_mini
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gpu-paas-network
+
+  redis:
+    image: redis:6-alpine
+    container_name: gpu-paas-redis
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gpu-paas-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gpu-paas-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/gpu_paas_mini
+      REDIS_URL: redis://redis:6379
+      PORT: 3001
+      NODE_ENV: development
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gpu-paas-network
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: gpu-paas-worker
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/gpu_paas_mini
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    volumes:
+      - ./worker/src:/app/src
+      - ./backend/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - gpu-paas-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gpu-paas-frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - gpu-paas-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  gpu-paas-network:
+    driver: bridge

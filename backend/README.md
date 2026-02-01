@@ -220,6 +220,75 @@ curl -N http://localhost:3001/api/jobs/{id}/events \
 
 The worker (see `worker/`) processes jobs from the Redis queue and updates their status in the database. The backend listens to BullMQ events via `QueueEvents` to stream real-time updates to SSE clients.
 
+### Usage Tracking & Monitoring
+
+All usage endpoints require authentication via `x-api-key` header.
+
+```bash
+# Get usage events (recent HTTP requests)
+curl http://localhost:3001/api/usage/events?range=1h \
+  -H "x-api-key: YOUR_API_KEY_HERE"
+
+# Query parameters:
+# - range: 15m | 1h | 24h (default: 1h)
+# - endpoint: exact path filter (e.g., /api/jobs)
+# - apiKeyId: filter by API key ID
+# - limit: max events to return (1-1000, default: 200)
+
+# Get usage summary (aggregated metrics)
+curl http://localhost:3001/api/usage/summary?range=1h \
+  -H "x-api-key: YOUR_API_KEY_HERE"
+
+# Response:
+# {
+#   "range": "1h",
+#   "total": 1234,
+#   "success": 1200,
+#   "errors": 34,
+#   "avgLatencyMs": 45.2,
+#   "p95LatencyMs": 120.5,
+#   "byEndpoint": [
+#     { "endpoint": "/api/jobs", "total": 500, "errors": 10, "avgLatencyMs": 50 }
+#   ],
+#   "byApiKey": [
+#     { "apiKeyId": "key-123", "total": 800, "errors": 5 }
+#   ]
+# }
+```
+
+**Usage Tracking Implementation**:
+
+- **Middleware**: All HTTP requests (except `/health` and `/api/usage/*`) are logged with:
+  - Timestamp, method, path, status code, duration
+  - Resolved API key ID (if valid key provided)
+  - Error message (for 4xx/5xx responses)
+  - **Note**: Usage endpoints are excluded to prevent recursive logging
+
+- **In-Memory Storage**: Events stored in ring buffer (last 1000 by default)
+  - Configurable via `USAGE_BUFFER_SIZE` env variable
+  - **Data resets on backend restart** (not persisted to database)
+
+- **Filtering**: Events can be filtered by time range, endpoint, or API key
+- **Aggregations**: Summary provides metrics like total requests, success rate, latency percentiles, grouped by endpoint and API key
+
+**Manual Testing**:
+
+```bash
+# Generate some traffic
+for i in {1..20}; do
+  curl -s http://localhost:3001/api/deployments \
+    -H "x-api-key: YOUR_API_KEY" > /dev/null
+done
+
+# View summary
+curl http://localhost:3001/api/usage/summary?range=15m \
+  -H "x-api-key: YOUR_API_KEY" | jq
+
+# View events
+curl http://localhost:3001/api/usage/events?range=15m&limit=10 \
+  -H "x-api-key: YOUR_API_KEY" | jq
+```
+
 ## Database
 
 The application uses PostgreSQL with Prisma ORM.
@@ -261,6 +330,9 @@ backend/
 ├── src/
 │   ├── api-keys/              # API Keys module
 │   ├── deployments/           # Deployments module
+│   ├── jobs/                  # Jobs module
+│   ├── queue/                 # BullMQ queue service
+│   ├── usage/                 # Usage tracking & monitoring
 │   ├── health/                # Health check module
 │   ├── prisma/                # Prisma service
 │   ├── common/                # Shared guards, decorators

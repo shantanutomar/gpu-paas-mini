@@ -26,6 +26,7 @@ model Deployment {
   configJson Json     @map("config_json")
   isActive   Boolean  @default(false) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
+  jobs       Job[]
 
   @@map("deployments")
 }
@@ -41,21 +42,22 @@ enum JobStatus {
 }
 
 model Job {
-  id              String    @id @default(uuid())
-  deploymentId    String?   @map("deployment_id")
-  status          JobStatus @default(QUEUED)
-  inputJson       Json      @map("input_json")
-  outputJson      Json?     @map("output_json")
+  id              String      @id @default(uuid())
+  deploymentId    String?     @map("deployment_id")
+  deployment      Deployment? @relation(fields: [deploymentId], references: [id])
+  status          JobStatus   @default(QUEUED)
+  inputJson       Json        @map("input_json")
+  outputJson      Json?       @map("output_json")
   error           String?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  startedAt       DateTime? @map("started_at")
-  finishedAt      DateTime? @map("finished_at")
-  cancelledAt     DateTime? @map("cancelled_at")
-  timeoutMs       Int       @default(60000) @map("timeout_ms")
-  attempt         Int       @default(1)
-  maxAttempts     Int       @default(1) @map("max_attempts")
-  retryDelayMs    Int?      @map("retry_delay_ms")
-  idempotencyKey  String?   @unique @map("idempotency_key")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  startedAt       DateTime?   @map("started_at")
+  finishedAt      DateTime?   @map("finished_at")
+  cancelledAt     DateTime?   @map("cancelled_at")
+  timeoutMs       Int         @default(60000) @map("timeout_ms")
+  attempt         Int         @default(1)
+  maxAttempts     Int         @default(1) @map("max_attempts")
+  retryDelayMs    Int?        @map("retry_delay_ms")
+  idempotencyKey  String?     @unique @map("idempotency_key")
 
   @@map("jobs")
 }

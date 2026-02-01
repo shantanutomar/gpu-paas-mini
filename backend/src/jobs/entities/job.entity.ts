@@ -7,6 +7,12 @@ export class JobEntity {
   @ApiProperty({ nullable: true })
   deploymentId: string | null;
 
+  @ApiProperty({ nullable: true, required: false })
+  deployment?: {
+    id: string;
+    modelName: string;
+  } | null;
+
   @ApiProperty({
     enum: [
       'QUEUED',

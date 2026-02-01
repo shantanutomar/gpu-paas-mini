@@ -27,13 +27,21 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers['x-api-key'];
+
+    // Extract API key from x-api-key header (primary) or Authorization: Bearer (secondary)
+    let apiKey = request.headers['x-api-key'];
+
+    if (!apiKey) {
+      const authHeader = request.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        apiKey = authHeader.substring(7); // Extract token after "Bearer "
+      }
+    }
 
     if (!apiKey) {
       throw new UnauthorizedException({
-        statusCode: 401,
         message: 'API key is required',
-        error: 'Unauthorized',
+        code: 'API_KEY_MISSING',
       });
     }
 
@@ -41,9 +49,8 @@ export class ApiKeyGuard implements CanActivate {
 
     if (!apiKeyId) {
       throw new UnauthorizedException({
-        statusCode: 401,
         message: 'Invalid or revoked API key',
-        error: 'Unauthorized',
+        code: 'API_KEY_INVALID',
       });
     }
 

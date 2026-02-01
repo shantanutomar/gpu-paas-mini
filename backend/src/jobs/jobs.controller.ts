@@ -166,12 +166,7 @@ export class JobsController {
 
     // Track if we've reached terminal state
     let isTerminal = false;
-    const terminalStates = [
-      'SUCCEEDED',
-      'FAILED',
-      'CANCELLED',
-      'TIMED_OUT',
-    ];
+    const terminalStates = ['SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT'];
 
     // Create heartbeat observable (every 15 seconds)
     const heartbeat$ = interval(15000).pipe(

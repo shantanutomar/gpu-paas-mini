@@ -8,6 +8,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { DeploymentsModule } from './deployments/deployments.module';
 import { JobsModule } from './jobs/jobs.module';
 import { HealthModule } from './health/health.module';
+import { UsageModule } from './usage/usage.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
     DeploymentsModule,
     JobsModule,
     HealthModule,
+    UsageModule,
   ],
   controllers: [AppController],
   providers: [AppService],

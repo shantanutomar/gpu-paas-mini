@@ -9,7 +9,9 @@
 
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
+    "test": "pnpm --filter frontend test && pnpm --filter backend test",
+    "test:watch": "pnpm -r --parallel test:watch",
+    "test:coverage": "pnpm --filter frontend test:coverage && pnpm --filter backend test:coverage",
 
     "format": "pnpm -r format",
     "typecheck": "pnpm -r typecheck",

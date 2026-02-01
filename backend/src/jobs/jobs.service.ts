@@ -74,6 +74,14 @@ export class JobsService {
         createdAt: 'desc',
       },
       take: 20,
+      include: {
+        deployment: {
+          select: {
+            id: true,
+            modelName: true,
+          },
+        },
+      },
     });
 
     return jobs.map((job) => this.mapToEntity(job));
@@ -139,6 +147,12 @@ export class JobsService {
     return {
       id: job.id,
       deploymentId: job.deploymentId,
+      ...(job.deployment && {
+        deployment: {
+          id: job.deployment.id,
+          modelName: job.deployment.modelName,
+        },
+      }),
       status: job.status,
       inputJson: job.inputJson as Record<string, any>,
       outputJson: job.outputJson as Record<string, any> | null,
