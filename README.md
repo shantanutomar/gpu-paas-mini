@@ -2,6 +2,8 @@
 
 A production-ready GPU Platform-as-a-Service mini application with real-time job monitoring, deployment management, and usage tracking.
 
+Video Recording: https://drive.google.com/file/d/1VqzVt8sum6BClS-zpgrBtBFIoriXhaMA/view?usp=sharing
+
 ## 📚 Documentation
 
 - **[Getting Started](#getting-started)** - Quick setup and running locally
